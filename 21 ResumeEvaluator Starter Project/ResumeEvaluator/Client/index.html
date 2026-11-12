@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Resume Evaluator</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 700px;
+            margin: 60px auto;
+            padding: 20px;
+            background-color: #f7f7f7;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+        }
+
+        h2 {
+            margin-top: 0;
+        }
+
+        h3 {
+            margin-top: 30px;
+            margin-bottom: 5px;
+        }
+
+        p {
+            color: #666;
+        }
+
+        form {
+            margin-top: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        input[type="file"] {
+            padding: 20px;
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            background-color: white;
+        }
+
+        button {
+            padding: 14px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 8px;
+            background-color: #111;
+            color: white;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        #message {
+            margin-top: 20px;
+        }
+
+        #results {
+            display: none;
+            margin-top: 30px;
+            padding: 24px;
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 12px;
+        }
+
+        .result {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+
+            padding: 16px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .result:last-child {
+            border-bottom: none;
+        }
+
+        .result-info {
+            flex: 1;
+        }
+
+        .label {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .value {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .confidence {
+            color: #777;
+            font-size: 14px;
+            margin-top: 4px;
+        }
+
+        .yes {
+            color: #16803a;
+        }
+
+        .no {
+            color: #b42318;
+        }
+
+        .summary {
+            background-color: #f8f8f8;
+            border-radius: 8px;
+            padding: 18px;
+            margin-top: 15px;
+        }
+
+        .summary-value {
+            font-size: 22px;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Resume Evaluator</h1>
+
+    <p>
+        Upload your resume to evaluate your experience
+        for a SwiftUI Developer position.
+    </p>
+
+    <form>
+
+        <input
+            type="file"
+            id="resume"
+            name="resume"
+            accept=".pdf"
+            required
+        >
+
+        <button
+            type="button"
+            id="evaluateButton">
+            Evaluate Resume
+        </button>
+
+    </form>
+
+    <p id="message"></p>
+
+    <div id="results">
+
+        <h2>Resume Evaluation</h2>
+
+        <h3>Skills</h3>
+
+        <div id="skills"></div>
+
+
+        <h3>Professional Experience</h3>
+
+        <div id="productionExperience"></div>
+
+
+        <h3>Overall Evaluation</h3>
+
+        <div class="summary">
+
+            <div class="label">
+                Experience Level
+            </div>
+
+            <div
+                class="summary-value"
+                id="experienceLevel">
+            </div>
+
+            <div
+                class="confidence"
+                id="experienceConfidence">
+            </div>
+
+        </div>
+
+
+        <div class="summary">
+
+            <div class="label">
+                Technical Fit
+            </div>
+
+            <div
+                class="summary-value"
+                id="technicalFit">
+            </div>
+
+            <div
+                class="confidence"
+                id="technicalFitConfidence">
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <script>
+
+        const resumeInput =
+            document.querySelector('#resume')
+
+        const evaluateButton =
+            document.querySelector('#evaluateButton')
+
+        const message =
+            document.querySelector('#message')
+
+        const results =
+            document.querySelector('#results')
+
+        const skills =
+            document.querySelector('#skills')
+
+        const productionExperience =
+            document.querySelector('#productionExperience')
+
+
+        evaluateButton.addEventListener(
+            'click',
+            async () => {
+
+                const file =
+                    resumeInput.files[0]
+
+                if (!file) {
+
+                    message.textContent =
+                        'Please select a resume.'
+
+                    return
+                }
+
+
+                const formData =
+                    new FormData()
+
+                formData.append(
+                    'resume',
+                    file
+                )
+
+
+                try {
+
+                    message.textContent =
+                        'Evaluating resume...'
+
+                    results.style.display =
+                        'none'
+
+                    evaluateButton.disabled =
+                        true
+
+
+                    const response =
+                        await fetch(
+                            'http://localhost:8080/api/upload',
+                            {
+                                method: 'POST',
+                                body: formData
+                            }
+                        )
+
+
+                    const result =
+                        await response.json()
+
+
+                    if (!response.ok) {
+
+                        throw new Error(
+                            result.message ||
+                            'Evaluation failed'
+                        )
+                    }
+
+
+                    message.textContent = ''
+
+                    displayResults(result)
+
+
+                } catch (error) {
+
+                    console.error(error)
+
+                    message.textContent =
+                        'Unable to evaluate resume.'
+
+                } finally {
+
+                    evaluateButton.disabled =
+                        false
+                }
+
+            }
+        )
+
+
+        function displayResults(result) {
+
+            displaySkills(result.skills)
+
+            displayProductionExperience(
+                result.productionExperience
+            )
+
+            displayExperienceLevel(
+                result.experienceLevel
+            )
+
+            displayTechnicalFit(
+                result.technicalFit
+            )
+
+            results.style.display = 'block'
+        }
+
+
+        function displaySkills(skillResults) {
+
+            skills.innerHTML = ''
+
+            skillResults.forEach(skill => {
+
+                const answer =
+                    skill.hasExperience
+
+                const confidence =
+                    getNoulConfidence(
+                        skill.confidence,
+                        answer
+                    )
+
+                const element =
+                    document.createElement('div')
+
+                element.className = 'result'
+
+                element.innerHTML = `
+                    <div class="result-info">
+
+                        <div class="label">
+                            ${skill.name}
+                        </div>
+
+                        <div class="confidence">
+                            ${confidence}% confidence
+                        </div>
+
+                    </div>
+
+                    <div class="value ${answer ? 'yes' : 'no'}">
+                        ${answer ? 'Yes' : 'No'}
+                    </div>
+                `
+
+                skills.appendChild(element)
+            })
+        }
+
+
+        function displayProductionExperience(experience) {
+
+            const answer =
+                experience.hasExperience
+
+            const confidence =
+                getNoulConfidence(
+                    experience.confidence,
+                    answer
+                )
+
+            productionExperience.innerHTML = `
+                <div class="result">
+
+                    <div class="result-info">
+
+                        <div class="label">
+                            Production App Experience
+                        </div>
+
+                        <div class="confidence">
+                            ${confidence}% confidence
+                        </div>
+
+                    </div>
+
+                    <div class="value ${answer ? 'yes' : 'no'}">
+                        ${answer ? 'Yes' : 'No'}
+                    </div>
+
+                </div>
+            `
+        }
+
+
+        function displayExperienceLevel(experience) {
+
+            document.querySelector(
+                '#experienceLevel'
+            ).textContent =
+                formatValue(experience.value)
+
+
+            document.querySelector(
+                '#experienceConfidence'
+            ).textContent =
+                `${Math.round(
+                    experience.confidence * 100
+                )}% confidence`
+        }
+
+
+        function displayTechnicalFit(technicalFit) {
+
+    const score = technicalFit.score
+
+    let label
+
+    if (score < 0.5) {
+        label = 'Poor Match'
+    } else if (score < 1.5) {
+        label = 'Reasonable Match'
+    } else {
+        label = 'Excellent Match'
+    }
+
+    document.querySelector(
+        '#technicalFit'
+    ).textContent = label
+
+    document.querySelector(
+        '#technicalFitConfidence'
+    ).textContent =
+        `${Math.round(
+            technicalFit.confidence * 100
+        )}% confidence`
+}
+
+
+        function getNoulConfidence(
+            probabilityOfYes,
+            answer
+        ) {
+
+            const confidence =
+                answer
+                    ? probabilityOfYes
+                    : 1 - probabilityOfYes
+
+            return Math.round(
+                confidence * 100
+            )
+        }
+
+
+        function formatValue(value) {
+
+            return value
+                .replaceAll('_', ' ')
+                .replace(
+                    /\b\w/g,
+                    character =>
+                        character.toUpperCase()
+                )
+        }
+
+    </script>
+
+</body>
+</html>
